@@ -13,9 +13,9 @@ All code is based the gnomAD mitochondrial pipeline and scripts and has been ada
 * R
 * bwa
 * GATK (tested on 4.1.7.0)
-* Picard (tested on X)
+* Picard (tested on 2.18.27)
 * HaplocheckCLI (custom jar from repository)
-* Cromwell (tested on X)
+* Cromwell (tested on v56)
 * Hail
 
 ### Notes
@@ -25,6 +25,22 @@ HaplocheckCLI jar can be extracted from the image `us.gcr.io/broad-dsde-methods/
 
 
 ## Single sample variant calling
+
+### Running WDL using Cromwell
+The Mitochondrial WDL pipeline is run using cromwell using the following command line.
+```
+java -Dconfig.file=slurm.conf -jar \
+/home/ml2529/shared/tools/jars/cromwell-56.jar run \
+MitochondriaPipeline_Snapshot25.wdl \
+-i mito_pipeline_inputs.json  \
+-o workflow.options
+
+```
+
+The `launch.sh` file is a batch script that can be used to launch in Slurm by the following command  
+```
+sbatch launch.sh
+```
 
 ### Inputs
 The main input file is specified in mito_pipeline_inputs.json. In summary this contains the location of the follow input files:
@@ -46,8 +62,52 @@ The workflow.options input file contains where output files should be copied aft
 * Removes intermediate output files that are not part of the final output.
 * Caches WDL workflow progress so pipeline can resume from the failure point instead of from scratch. Please refer to advanced configuration for more details.
 
-### Running WDL using Cromwell
 
+### Outputs
+The successful run of the WDL based pipeline should produce the following files copied to the output directory:
+* Mitochondrial genome (MT) aligned BAM file
+* Variant calls (vcf file) from Mutect2 
+* VCF file with multi-allelic variants split into bi-allelic variants
+* Per base coverage file
+
+It also contains additional useful files/metrics
+* Unaligned mitochondrial genome (MT) reads as BAM file extracted from genome BAM
+* Input vcf file used for haplocheckCLI
+
+
+### Advanced configuration
+
+### Scheduling specific configuration
+The `slurm.conf` is specific for Slurm scheduling commands. For this to work using a different scheduling backend this will need to be edited accordingly.
+
+#### Resume from failures via call caching
+A useful feature that is not configured by default in cromwell based WDL is the ability to resume from a failure point. It is quite difficult to set up due to the lack of documentation. This pipeline uses MySQL to log workflow progress and intermediate files. Please refer to the database section in the `slurm.conf` and edit the below and changing the database `url`, `user` and `password` fields for it to work.
+
+```
+database {
+  # mysql example
+  #driver = "slick.driver.MySQLDriver$" #old way
+
+  profile = "slick.jdbc.MySQLProfile$"
+
+
+  # see all possible parameters and default values here:
+  # http://slick.lightbend.com/doc/3.2.0/api/index.html#slick.jdbc.JdbcBackend$DatabaseFactoryDef@forConfig(String,Config,Driver):Database
+  # https://dev.mysql.com/doc/connector-j/8.0/en/connector-j-reference-jdbc-url-format.html
+
+  db {
+    driver = "com.mysql.cj.jdbc.Driver"
+    url = "jdbc:mysql://chdgenes.org/cromwell?rewriteBatchedStatements=true&useSSL=false"
+    user = "cromwell"
+    password = "L3kK1ds2018"
+    connectionTimeout = 5000
+  }
+
+  # For batch inserts the number of inserts to send to the DB at a time
+  insert-batch-size = 2000
+
+}
+```
 
 
 ## Merging single sample variant calls
