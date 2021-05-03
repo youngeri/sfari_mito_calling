@@ -59,8 +59,7 @@ The main input file is specified in `mito_pipeline_inputs.json`. In summary this
 * Non-control region interval list
 * Control region shifted interval list
 
-This **needs to be edited** to point to location of these files on the local file system.  
-
+This **needs to be edited** to point to location of these files on the local file system. All input files needed are in the `./wdl_input_files` directory. The GATK, Picard and HaplocheckCLI jar files can be obtained as detailed in Requirements section.
 
 The workflow.options input file contains where output files should be copied after successful completion. It also switches on the folliowing convenient features:
 * `"use_relative_output_paths": true` - output files are copied to the output directory but are not embedded in the deep directory structure that cromwell/WDL produces.
