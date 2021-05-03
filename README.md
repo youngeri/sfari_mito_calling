@@ -47,7 +47,7 @@ sbatch launch.sh
 ```
 
 ### Inputs
-The main input file is specified in mito_pipeline_inputs.json. In summary this contains the location of the follow input files:
+The main input file is specified in `mito_pipeline_inputs.json`. In summary this contains the location of the follow input files:
 * Input bam/cram file (from genome sequencing)
 * GATK jar file (String)
 * Picard jar file (String)
@@ -59,7 +59,8 @@ The main input file is specified in mito_pipeline_inputs.json. In summary this c
 * Non-control region interval list
 * Control region shifted interval list
 
-This needs to be edited to point to location of these files on the local file system.  
+This **needs to be edited** to point to location of these files on the local file system.  
+
 
 The workflow.options input file contains where output files should be copied after successful completion. It also switches on the folliowing convenient features:
 * `"use_relative_output_paths": true` - output files are copied to the output directory but are not embedded in the deep directory structure that cromwell/WDL produces.
@@ -127,7 +128,8 @@ Currently in development. The follow gnomAD hail code will be adapted for the SF
 * `./hail/combine_vcfs.py` - Merges single sample vcf files into a single multi-sample vcf.
 
 ## Additional annotation for import into Elastic search database
-Currently in development
+Currently in development. The follow gnomAD hail code will be adapted for the SFARI project.
+* `./hail/add_annotations.py`
 
 
 
