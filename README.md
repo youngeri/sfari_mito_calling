@@ -20,7 +20,11 @@ All code is based the gnomAD mitochondrial pipeline and scripts and has been ada
 
 ### Notes
 GATK version used in the Google cloud WDL can be extracted from the respective docker image. In snapshot version 25 this can be extracted from `us.gcr.io/broad-gatk/gatk:4.1.7.0` contained in the path `/root/gatk.jar`  
+
+
 Similarly Picard jar can be extracted from the image `us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.2-1552931386` contained in the path `/usr/gitc/picard.jar`  
+  
+  
 HaplocheckCLI jar can be extracted from the image `us.gcr.io/broad-dsde-methods/haplochecker:haplochecker-0124` contained in the path `/usr/mtdnaserver/haplocheckCLI.jar`. Alternatively this can be built from source from the Leklab forked repository.  
 
 
@@ -77,7 +81,7 @@ It also contains additional useful files/metrics
 
 ### Advanced configuration
 
-### Scheduling specific configuration
+#### Scheduling specific configuration
 The `slurm.conf` is specific for Slurm scheduling commands. For this to work using a different scheduling backend this will need to be edited accordingly.
 
 #### Resume from failures via call caching
