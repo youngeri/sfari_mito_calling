@@ -64,8 +64,9 @@ This needs to be edited to point to location of these files on the local file sy
 The workflow.options input file contains where output files should be copied after successful completion. It also switches on the folliowing convenient features:
 * `"use_relative_output_paths": true` - output files are copied to the output directory but are not embedded in the deep directory structure that cromwell/WDL produces.
 * `"delete_intermediate_output_files": true` - Removes intermediate output files that are not part of the final output.
-* `write_to_cache": true, "read_from_cache": true` - Caches WDL workflow progress so pipeline can resume from the failure point instead of from scratch. Please refer to advanced configuration for more details.
+* `write_to_cache": true, "read_from_cache": true` - Caches WDL workflow progress so pipeline can resume from the failure point instead of from scratch.  
 
+Please refer to advanced configuration for more details.
 
 ### Outputs
 The successful run of the WDL based pipeline should produce the following files copied to the output directory:
@@ -77,7 +78,13 @@ The successful run of the WDL based pipeline should produce the following files 
 It also contains additional useful files/metrics
 * Unaligned mitochondrial genome (MT) reads as BAM file extracted from genome BAM
 * Input vcf file used for haplocheckCLI
-
+* Mark duplicates metrics
+* Coverage metrics
+* Theoretical sensitivity metrics
+* Mean coverage
+* Contamination metrics file (from haplocheckCLI)
+* Contamination fraction estimate
+* Major haplogroup
 
 ### Advanced configuration
 
@@ -115,8 +122,9 @@ database {
 
 
 ## Merging single sample variant calls
-Currently in development
-
+Currently in development. The follow gnomAD hail code will be adapted for the SFARI project.
+* `./hail/annotate_coverage.py` - used to create a multi-sample coverage file to fill details of reference sites on sample merge.
+* `./hail/combine_vcfs.py` - Merges single sample vcf files into a single multi-sample vcf.
 
 ## Additional annotation for import into Elastic search database
 Currently in development
