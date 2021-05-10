@@ -2,7 +2,7 @@ version 1.0
 
 import "AlignAndCall.wdl" as AlignAndCall
 
-workflow MitochondriaPipeline {
+workflow MitochondriaMultiSamplePipeline {
 
   meta {
     description: "Takes in an hg38 bam or cram and outputs VCF of SNP/Indel calls on the mitochondria."
@@ -10,8 +10,11 @@ workflow MitochondriaPipeline {
   }
 
   input {
-    File wgs_aligned_input_bam_or_cram
-    File wgs_aligned_input_bam_or_cram_index
+    #File wgs_aligned_input_bam_or_cram
+    #File wgs_aligned_input_bam_or_cram_index
+
+    File inputSamplesFile
+
     String contig_name = "chrM"
     Float autosomal_coverage = 30
 
@@ -63,110 +66,116 @@ workflow MitochondriaPipeline {
     contig_name: "Name of mitochondria contig in reference that wgs_aligned_input_bam_or_cram is aligned to"
   }
 
-  call SubsetBamToChrM {
-    input:
-      gatk = gatk,
-      input_bam = wgs_aligned_input_bam_or_cram,
-      input_bai = wgs_aligned_input_bam_or_cram_index,
-      contig_name = contig_name,
-      ref_fasta = ref_fasta,
-      ref_fasta_index = ref_fasta_index,
-      ref_dict = ref_dict
-  }
 
-  call RevertSam {
-    input:
-      picard = picard,
-      input_bam = SubsetBamToChrM.output_bam,
-  }
+  Array[Array[String]] inputSamples = read_tsv(inputSamplesFile)
 
-  String base_name = basename(SubsetBamToChrM.output_bam, ".bam")
+  scatter (sample in inputSamples) {
+    call SubsetBamToChrM {
+      input:
+        gatk = gatk,
+        input_bam = sample[0],
+        input_bai = sample[1],
+        contig_name = contig_name,
+        ref_fasta = ref_fasta,
+        ref_fasta_index = ref_fasta_index,
+        ref_dict = ref_dict
+    }
 
-  call AlignAndCall.AlignAndCall as AlignAndCall {
-    input:
-      unmapped_bam = RevertSam.unmapped_bam,
-      autosomal_coverage = autosomal_coverage,
-      base_name = base_name,
-      picard = picard,
-      gatk = gatk,
-      haplocheckCLI = haplocheckCLI,
-      mt_dict = mt_dict,
-      mt_fasta = mt_fasta,
-      mt_fasta_index = mt_fasta_index,
-      mt_amb = mt_amb,
-      mt_ann = mt_ann,
-      mt_bwt = mt_bwt,
-      mt_pac = mt_pac,
-      mt_sa = mt_sa,
-      mt_shifted_dict = mt_shifted_dict,
-      mt_shifted_fasta = mt_shifted_fasta,
-      mt_shifted_fasta_index = mt_shifted_fasta_index,
-      mt_shifted_amb = mt_shifted_amb,
-      mt_shifted_ann = mt_shifted_ann,
-      mt_shifted_bwt = mt_shifted_bwt,
-      mt_shifted_pac = mt_shifted_pac,
-      mt_shifted_sa = mt_shifted_sa,
-      compress_output_vcf = compress_output_vcf,
-      shift_back_chain = shift_back_chain,
-      blacklisted_sites = blacklisted_sites,
-      blacklisted_sites_index = blacklisted_sites_index
-  }
+    call RevertSam {
+      input:
+        picard = picard,
+        input_bam = SubsetBamToChrM.output_bam,
+    }
 
-  # This is a temporary task to handle "joint calling" until Mutect2 can produce a GVCF.
-  # This proivdes coverage at each base so low coverage sites can be considered ./. rather than 0/0.
-  call CoverageAtEveryBase {
-    input:
-      picard = picard,
-      input_bam_regular_ref = AlignAndCall.mt_aligned_bam,
-      input_bam_regular_ref_index = AlignAndCall.mt_aligned_bai,
-      input_bam_shifted_ref = AlignAndCall.mt_aligned_shifted_bam,
-      input_bam_shifted_ref_index = AlignAndCall.mt_aligned_shifted_bai,
-      shift_back_chain = shift_back_chain,
-      control_region_shifted_reference_interval_list = control_region_shifted_reference_interval_list,
-      non_control_region_interval_list = non_control_region_interval_list,
-      ref_fasta = mt_fasta,
-      ref_fasta_index = mt_fasta_index,
-      ref_dict = mt_dict,
-      shifted_ref_fasta = mt_shifted_fasta,
-      shifted_ref_fasta_index = mt_shifted_fasta_index,
-      shifted_ref_dict = mt_shifted_dict
-  }
-  
-  call SplitMultiAllelicSites {
-    input:
-      gatk = gatk,
-      input_vcf = AlignAndCall.out_vcf,
-      input_vcf_index = AlignAndCall.out_vcf_index,
-      base_name = base_name,
-      ref_fasta = mt_fasta,
-      ref_fasta_index = mt_fasta_index,
-      ref_dict = mt_dict
+    String base_name = basename(SubsetBamToChrM.output_bam, ".bam")
+
+    call AlignAndCall.AlignAndCall as AlignAndCall {
+      input:
+        unmapped_bam = RevertSam.unmapped_bam,
+        autosomal_coverage = autosomal_coverage,
+        base_name = base_name,
+        picard = picard,
+        gatk = gatk,
+        haplocheckCLI = haplocheckCLI,
+        mt_dict = mt_dict,
+        mt_fasta = mt_fasta,
+        mt_fasta_index = mt_fasta_index,
+        mt_amb = mt_amb,
+        mt_ann = mt_ann,
+        mt_bwt = mt_bwt,
+        mt_pac = mt_pac,
+        mt_sa = mt_sa,
+        mt_shifted_dict = mt_shifted_dict,
+        mt_shifted_fasta = mt_shifted_fasta,
+        mt_shifted_fasta_index = mt_shifted_fasta_index,
+        mt_shifted_amb = mt_shifted_amb,
+        mt_shifted_ann = mt_shifted_ann,
+        mt_shifted_bwt = mt_shifted_bwt,
+        mt_shifted_pac = mt_shifted_pac,
+        mt_shifted_sa = mt_shifted_sa,
+        compress_output_vcf = compress_output_vcf,
+        shift_back_chain = shift_back_chain,
+        blacklisted_sites = blacklisted_sites,
+        blacklisted_sites_index = blacklisted_sites_index
+    }
+
+    # This is a temporary task to handle "joint calling" until Mutect2 can produce a GVCF.
+    # This proivdes coverage at each base so low coverage sites can be considered ./. rather than 0/0.
+    call CoverageAtEveryBase {
+      input:
+        picard = picard,
+        input_bam_regular_ref = AlignAndCall.mt_aligned_bam,
+        input_bam_regular_ref_index = AlignAndCall.mt_aligned_bai,
+        input_bam_shifted_ref = AlignAndCall.mt_aligned_shifted_bam,
+        input_bam_shifted_ref_index = AlignAndCall.mt_aligned_shifted_bai,
+        shift_back_chain = shift_back_chain,
+        control_region_shifted_reference_interval_list = control_region_shifted_reference_interval_list,
+        non_control_region_interval_list = non_control_region_interval_list,
+        ref_fasta = mt_fasta,
+        ref_fasta_index = mt_fasta_index,
+        ref_dict = mt_dict,
+        shifted_ref_fasta = mt_shifted_fasta,
+        shifted_ref_fasta_index = mt_shifted_fasta_index,
+        shifted_ref_dict = mt_shifted_dict
+    }
+    
+    call SplitMultiAllelicSites {
+      input:
+        gatk = gatk,
+        input_vcf = AlignAndCall.out_vcf,
+        input_vcf_index = AlignAndCall.out_vcf_index,
+        base_name = base_name,
+        ref_fasta = mt_fasta,
+        ref_fasta_index = mt_fasta_index,
+        ref_dict = mt_dict
+    }
+
   }
 
   output {
-    File subset_bam = SubsetBamToChrM.output_bam
-    File subset_bai = SubsetBamToChrM.output_bai
-    File mt_aligned_bam = AlignAndCall.mt_aligned_bam
-    File mt_aligned_bai = AlignAndCall.mt_aligned_bai
-    File duplicate_metrics = AlignAndCall.duplicate_metrics    
-    File coverage_metrics = AlignAndCall.coverage_metrics
-    File theoretical_sensitivity_metrics = AlignAndCall.theoretical_sensitivity_metrics
-    Int mean_coverage = AlignAndCall.mean_coverage
+    #Array[File] subset_bam = SubsetBamToChrM.output_bam
+    #Array[File] subset_bam = SubsetBamToChrM.output_bam
+    #Array[File] subset_bai = SubsetBamToChrM.output_bai
+    #Array[File] mt_aligned_bam = AlignAndCall.mt_aligned_bam
+    #Array[File] mt_aligned_bai = AlignAndCall.mt_aligned_bai
+    #Array[File] duplicate_metrics = AlignAndCall.duplicate_metrics    
+    #Array[File] coverage_metrics = AlignAndCall.coverage_metrics
+    #Array[File] theoretical_sensitivity_metrics = AlignAndCall.theoretical_sensitivity_metrics
+    #Array[Int] mean_coverage = AlignAndCall.mean_coverage
 
-    File contamination_metrics = AlignAndCall.contamination_metrics
-    Float contamination = AlignAndCall.contamination
-    String major_haplogroup = AlignAndCall.major_haplogroup
+    #Array[File] contamination_metrics = AlignAndCall.contamination_metrics
+    #Array[Float] contamination = AlignAndCall.contamination
+    #Array[String] major_haplogroup = AlignAndCall.major_haplogroup
 
-    File input_vcf_for_haplochecker = AlignAndCall.input_vcf_for_haplochecker
-    File out_vcf = AlignAndCall.out_vcf
-    File out_vcf_index = AlignAndCall.out_vcf_index
+    #Array[File] input_vcf_for_haplochecker = AlignAndCall.input_vcf_for_haplochecker
+    #Array[File] out_vcf = AlignAndCall.out_vcf
+    #Array[File] out_vcf_index = AlignAndCall.out_vcf_index
 
-    File base_level_coverage_metrics = CoverageAtEveryBase.table
-    File split_vcf = SplitMultiAllelicSites.split_vcf
-    File split_vcf_index = SplitMultiAllelicSites.split_vcf_index
-
-
+    Array[File] base_level_coverage_metrics = CoverageAtEveryBase.table
+    Array[File] split_vcf = SplitMultiAllelicSites.split_vcf
+    Array[File] split_vcf_index = SplitMultiAllelicSites.split_vcf_index
   }
+
 }
 
 task SubsetBamToChrM {

@@ -515,6 +515,9 @@ task SplitMultiAllelicsAndRemoveNonPassSites {
     File filtered_vcf_idx
   }
 
+  String basename = basename(filtered_vcf, ".vcf.gz")
+  String output_vcf = basename + ".splitAndPassOnly.vcf"
+
   command {
     set -e
 
@@ -528,12 +531,13 @@ task SplitMultiAllelicsAndRemoveNonPassSites {
 
       java -Xmx4G -jar ~{gatk} SelectVariants \
         -V split.vcf \
-        -O splitAndPassOnly.vcf \
+        -O ~{output_vcf} \
         --exclude-filtered
   
   }
   output {
-    File vcf_for_haplochecker = "splitAndPassOnly.vcf"
+    #File vcf_for_haplochecker = "splitAndPassOnly.vcf"
+    File vcf_for_haplochecker = "~{output_vcf}"
   }
 }
 
@@ -550,14 +554,22 @@ task GetContamination {
   parameter_meta {
     input_vcf: "Filtered and split multi-allelic sites VCF for mitochondria"
   }
+
+  String basename = basename(input_vcf, ".splitAndPassOnly.vcf")
+  String output_file = basename + ".haplocheck_contamination.txt"
+
   command <<<
   set -e
   PARENT_DIR="$(dirname "~{input_vcf}")"
   java -Xmx4G -jar ~{haplocheckCLI} "${PARENT_DIR}"
 
-  sed 's/\"//g' output > output-noquotes
+  #sed 's/\"//g' output > output-noquotes
+  #grep "SampleID" output-noquotes > headers
+  
+  sed 's/\"//g' output > ~{output_file}
+  grep "SampleID" ~{output_file} > headers
 
-  grep "SampleID" output-noquotes > headers
+
   FORMAT_ERROR="Bad contamination file format"
   if [ `awk '{print $2}' headers` != "Contamination" ]; then
     echo $FORMAT_ERROR; exit 1
@@ -575,7 +587,9 @@ task GetContamination {
     echo $FORMAT_ERROR; exit 1
   fi
 
-  grep -v "SampleID" output-noquotes > output-data
+  #grep -v "SampleID" output-noquotes > output-data
+  
+  grep -v "SampleID" ~{output_file} > output-data
   awk -F "\t" '{print $2}' output-data > contamination.txt
   awk -F "\t" '{print $6}' output-data > major_hg.txt
   awk -F "\t" '{print $8}' output-data > minor_hg.txt
@@ -584,7 +598,8 @@ task GetContamination {
   >>>
 
   output {
-    File contamination_file = "output-noquotes"
+    #File contamination_file = "output-noquotes"
+    File contamination_file = "~{output_file}"
     String hasContamination = read_string("contamination.txt") 
     String major_hg = read_string("major_hg.txt")
     String minor_hg = read_string("minor_hg.txt")
