@@ -122,9 +122,19 @@ database {
 
 
 ## Merging single sample variant calls
-Currently in development. The follow gnomAD hail code will be adapted for the SFARI project.
-* `./hail/annotate_coverage.py` - used to create a multi-sample coverage file to fill details of reference sites on sample merge.
-* `./hail/combine_vcfs.py` - Merges single sample vcf files into a single multi-sample vcf.
+The hail scripts used for gnomAD mitochondrial calling pipeline was modified. This is done in two stages:
+
+### 1. Creating a Hail matrix table for coverage
+The single sample vcf produced by the above WDL pipeline only shows variant sites. This becomes a challenge when merging vcfs where one sample has a variant and the other does not. This is typically solved by GATK by using gVCF files with the concept of reference blocks. This pipeline uses per base coverage (generated above) to fill in missing information, that is the coverage of a homoplasmic reference site on samples that do not contain a variant at that site.  
+
+This step prepares the reference sample by using the follow script.
+`./hail/annotate_coverage.py`
+
+### 2. Merging and filtering single sample vcf files
+The following script takes the per base coverage of each sample as a Hail matrix table and other filtering parameters to perform the merging.  
+`./hail/combine_vcfs.py`
+
+The final output files are a Hail matrix table and compressed vcf file.  
 
 ## Additional annotation for import into Elastic search database
 Currently in development. The follow gnomAD hail code will be adapted for the SFARI project.
