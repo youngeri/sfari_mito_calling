@@ -84,16 +84,12 @@ def main(args):
     logger.info(
         "Reading in individual coverage files as matrix tables and adding to a list of matrix tables..."
     )
-    with open(input_tsv, "r") as f:
-        #next(f)
+    with hl.hadoop_open(input_tsv, "r") as f:
+        next(f)
         for line in f:
             line = line.rstrip()
             items = line.split("\t")
-            sample, base_level_coverage_metrics = items[0:2]
-            #print(sample)
-            #print(base_level_coverage_metrics)
-
-            
+            participant_id, base_level_coverage_metrics, sample = items[0:3]
             mt = hl.import_matrix_table(
                 base_level_coverage_metrics,
                 delimiter="\t",
@@ -103,16 +99,14 @@ def main(args):
             mt = mt.rename({"x": "coverage"})
             mt = mt.key_cols_by(s=sample)
             mt_list.append(mt)
-            
 
-    
     logger.info("Joining individual coverage mts...")
     out_dir = dirname(output_ht)
     temp_out_dir = out_dir + "/temp"
 
     cov_mt = multi_way_union_mts(mt_list, temp_out_dir, chunk_size)
     n_samples = cov_mt.count_cols()
-    
+
     logger.info("Adding coverage annotations...")
     cov_mt = cov_mt.annotate_rows(
         locus=hl.locus(cov_mt.chrom, cov_mt.pos, reference_genome="GRCh38"),
@@ -138,7 +132,7 @@ def main(args):
     cov_ht = cov_mt.rows()
     cov_ht = cov_ht.checkpoint(output_ht, overwrite=overwrite)
     cov_ht.export(output_tsv)
-    
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

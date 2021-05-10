@@ -8,7 +8,7 @@ import sys
 import hail as hl
 import pandas as pd
 
-#from gnomad.resources.resource_utils import DataException
+from gnomad.resources.resource_utils import DataException
 from hail.utils.java import info
 from subprocess import Popen, PIPE, check_output
 from typing import Dict
@@ -150,7 +150,7 @@ def multi_way_union_mts(mts: list, tmp_dir: str, chunk_size: int) -> hl.MatrixTa
 
 
 def join_mitochondria_vcfs_into_mt(
-    input_tsv: str, output_bucket: str, chunk_size: int = 100
+    confirmed_vcfs: Dict[str, str], output_bucket: str, chunk_size: int = 100
 ) -> hl.MatrixTable:
     """Reformats and joins individual mitochondrial vcfs into one MatrixTable
 
@@ -163,30 +163,22 @@ def join_mitochondria_vcfs_into_mt(
     """
 
     mt_list = []
-
-    with open(input_tsv, "r") as f:
-
-        for line in f:
-            line = line.rstrip()
-            items = line.split("\t")
-            sample, vcf_path = items[0:2]
-
-            mt = hl.import_vcf(vcf_path, reference_genome="GRCh38")
-            # because the vcfs are split, there is only one AF value, although misinterpreted as an array because Number=A in vcf header
-            # second value of MMQ is the value for the alternate allele
-            mt = mt.select_entries("DP", HL=mt.AF[0])
-            mt = mt.annotate_entries(
-                MQ=hl.float(mt.info["MMQ"][1]), TLOD=mt.info["TLOD"][0], FT=hl.if_else(hl.len(mt.filters) == 0, {"PASS"}, mt.filters)
-            )
-            # use GRCh37 as reference as this is more compatibile with mitochondria resources that may be added as annotations in downstream scripts
-            mt = mt.key_rows_by(
-                locus=hl.locus("MT", mt.locus.position, reference_genome="GRCh37"),
-                alleles=mt.alleles,
-            )
-            mt = mt.key_cols_by(s=sample)
-            mt = mt.select_rows()
-            mt_list.append(mt)
-
+    for sample, vcf_path in confirmed_vcfs.items():
+        mt = hl.import_vcf(vcf_path, reference_genome="GRCh38")
+        # because the vcfs are split, there is only one AF value, although misinterpreted as an array because Number=A in vcf header
+        # second value of MMQ is the value for the alternate allele
+        mt = mt.select_entries("DP", HL=mt.AF[0])
+        mt = mt.annotate_entries(
+            MQ=hl.float(mt.info["MMQ"][1]), TLOD=mt.info["TLOD"][0], FT=hl.if_else(hl.len(mt.filters) == 0, {"PASS"}, mt.filters)
+        )
+        # use GRCh37 as reference as this is more compatibile with mitochondria resources that may be added as annotations in downstream scripts
+        mt = mt.key_rows_by(
+            locus=hl.locus("MT", mt.locus.position, reference_genome="GRCh37"),
+            alleles=mt.alleles,
+        )
+        mt = mt.key_cols_by(s=sample)
+        mt = mt.select_rows()
+        mt_list.append(mt)
 
     temp_out_dir = output_bucket + "/temp"
     combined_mt = multi_way_union_mts(mt_list, temp_out_dir, chunk_size)
@@ -295,8 +287,6 @@ def apply_mito_artifact_filter(
 
 
 def main(args):
-
-    '''
     participant_data = args.participant_data
     sample_map = args.sample_map
     coverage_mt_path = args.coverage_mt_path
@@ -307,33 +297,19 @@ def main(args):
     minimum_homref_coverage = args.minimum_homref_coverage
     chunk_size = args.chunk_size
     overwrite = args.overwrite
-    '''
 
-    input_tsv = args.input_tsv
-
-    chunk_size = args.chunk_size
-    overwrite = args.overwrite
-    output_bucket = args.output_bucket
-    file_suffix = args.file_suffix
-
-    minimum_homref_coverage = args.minimum_homref_coverage
-    coverage_mt_path = args.coverage_mt_path
-
-    '''
     logger.info("Confirming existence of individual sample vcfs...")
     confirmed_vcfs = check_vcf_existence(
         participant_data, vcf_col, sample_map, output_bucket
     )
-    '''
 
     logger.info("Combining VCFs...")
     combined_mt = join_mitochondria_vcfs_into_mt(
-        input_tsv, output_bucket, chunk_size
+        confirmed_vcfs, output_bucket, chunk_size
     )
     output_path_mt = f"{output_bucket}/raw_combined_mt.mt"
     combined_mt = combined_mt.checkpoint(output_path_mt, overwrite=overwrite)
 
-    
     logger.info("Removing certain FT filters...")
     combined_mt = remove_FT_values(combined_mt)
 
@@ -341,9 +317,9 @@ def main(args):
     combined_mt = determine_hom_refs(
         combined_mt, coverage_mt_path, minimum_homref_coverage
     )
-    
-    #logger.info("Applying artifact_prone_site fiter...")
-    #combined_mt = apply_mito_artifact_filter(combined_mt, artifact_prone_sites_path)
+
+    logger.info("Applying artifact_prone_site fiter...")
+    combined_mt = apply_mito_artifact_filter(combined_mt, artifact_prone_sites_path)
 
     logger.info("Writing combined MT and VCF...")
     # set the file names for output files
@@ -352,7 +328,7 @@ def main(args):
 
     combined_mt.write(out_mt, overwrite=True)
     hl.export_vcf(combined_mt, out_vcf, metadata=META_DICT)
-    
+
     logger.info("DONE")
 
 
@@ -360,7 +336,6 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser(
         description="This script combines individual mitochondria vcf files into one MatrixTable, determines homoplasmic reference sites, and applies an artifact_prone_site filter"
     )
-    '''
     p.add_argument(
         "-p",
         "--participant_data",
@@ -371,7 +346,6 @@ if __name__ == "__main__":
         "--sample_map",
         help="Path to file of samples to subset (tab-delimited participant_id and sample)",
     )
-    '''
 
     p.add_argument(
         "-c", "--coverage_mt_path", help="Path to MatrixTable of sample-level coverage"
@@ -382,20 +356,11 @@ if __name__ == "__main__":
         "--artifact_prone_sites_path",
         help="List of artifact_prone sites to flag in the FILTER column (in BED format)",
     )
-
-
-    p.add_argument(
-        "-i",
-        "--input_tsv",
-        help="Input tsv file",
-    )
-
     p.add_argument(
         "-o",
         "--output_bucket",
         help="Path to bucket to which results should be written",
     )
-
     p.add_argument(
         "-f",
         "--file_suffix",
