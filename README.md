@@ -4,7 +4,7 @@ This is the calling pipeline that has been used to call mitochondrial variants o
 * Merging of single sample variant calls (i.e. vcf files) into a combined Hail matrix table. 
 * Summary annotation and export as a Hail table for import into Elastic search database used by the SFARI browser. 
 
-All code is based the gnomAD mitochondrial pipeline and scripts developed and tested for Google Cloud Platform and has been adapted to work on Institutional clusters.
+All code is based the gnomAD mitochondrial pipeline and scripts developed and tested for Google Cloud Platform and has been adapted to work on Institutional clusters. An additional WDL was created to handle multiple samples as input instead of only taking in a single bam/cram.
 
 ## Requirements
 
@@ -45,10 +45,11 @@ The `launch.sh` file is a batch script that can be used to launch in Slurm by th
 ```
 sbatch launch.sh
 ```
+The `launch_multi.sh` file can be used to launch in Slurm across multiple samples.
 
 ### Inputs
 The main input file is specified in `mito_pipeline_inputs.json`. In summary this contains the location of the follow input files:
-* Input bam/cram file (from genome sequencing)
+* Input tsv file with two columns. The first is the path to bam/cram file, while the second is to the corresponding index file. For [example](samples_file.tsv)
 * GATK jar file (String)
 * Picard jar file (String)
 * haplocheckCLI jar file (String)
@@ -125,9 +126,9 @@ database {
 The hail scripts used for gnomAD mitochondrial calling pipeline was modified. This is done in two stages:
 
 ### 1. Creating a Hail matrix table for coverage
-The single sample vcf produced by the above WDL pipeline only shows variant sites. This becomes a challenge when merging vcfs where one sample has a variant and the other does not. This is typically solved by GATK by using gVCF files with the concept of reference blocks. This pipeline uses per base coverage (generated above) to fill in missing information, that is the coverage of a homoplasmic reference site on samples that do not contain a variant at that site.  
+The single sample vcf produced by the above WDL pipeline only shows variant sites. This becomes a challenge when merging vcfs where one sample has a variant and the other does not. This is typically solved by GATK through using gVCF files with the concept of reference blocks. This pipeline uses per base coverage (generated above) to fill in missing information, that is the coverage of a homoplasmic reference site on samples that do not contain a variant at that site.  
 
-This step prepares the reference sample by using the follow script.
+This step prepares the Hail matrix table that contains the per base coverage for all samples by using the follow script.
 `./hail/annotate_coverage.py`
 
 ### 2. Merging and filtering single sample vcf files
