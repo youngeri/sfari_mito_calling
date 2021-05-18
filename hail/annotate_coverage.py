@@ -1,3 +1,8 @@
+'''
+changes - use hail hadoop open
+
+'''
+
 import argparse
 import logging
 import math
@@ -39,13 +44,14 @@ def multi_way_union_mts(mts: list, tmp_dir: str, chunk_size: int) -> hl.MatrixTa
             )
 
             merged = hl.Table.multi_way_zip_join(to_merge, "__entries", "__cols")
+     # hl.null is deprecated, change to hl.missing
             merged = merged.annotate(
                 __entries=hl.flatten(
                     hl.range(hl.len(merged.__entries)).map(
                         lambda i: hl.coalesce(
                             merged.__entries[i].__entries,
                             hl.range(hl.len(merged.__cols[i].__cols)).map(
-                                lambda j: hl.null(
+                                lambda j: hl.missing(
                                     merged.__entries.__entries.dtype.element_type.element_type
                                 )
                             ),
@@ -84,7 +90,7 @@ def main(args):
     logger.info(
         "Reading in individual coverage files as matrix tables and adding to a list of matrix tables..."
     )
-    with open(input_tsv, "r") as f:
+    with hl.utils.hadoop_open(input_tsv, "r") as f:
         #next(f)
         for line in f:
             line = line.rstrip()

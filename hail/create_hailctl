@@ -1,0 +1,21 @@
+hailctl dataproc start \
+--master-machine-type=n1-standard-8 \
+--master-boot-disk-size=500 \
+--num-master-local-ssds=1 \
+--num-preemptible-workers=0 \
+--num-worker-local-ssds=0 \
+--num-workers=8 \
+--preemptible-worker-boot-disk-size=40 \
+--worker-boot-disk-size=40 \
+--worker-machine-type=n1-standard-8 \
+--region=us-central1 \
+--zone=us-central1-b \
+--subnet=sparky-central-1 \
+--init_timeout=20m \
+--configuration=hall-lab-prod \
+--project=washu-genome-inh-dis-analysis \
+--service-account=hail-worker@washu-genome-inh-dis-analysis.iam.gserviceaccount.com \
+--packages=seaborn,scikit-learn,statsmodels \
+--labels=user=youngeri,hail_project=qc20200225 \
+--max-idle=10h \
+epy-mt

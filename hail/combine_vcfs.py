@@ -1,3 +1,8 @@
+'''
+changes: use hl.utils.hadoop_open
+null -> missing
+'''
+
 import argparse
 import logging
 import math
@@ -120,7 +125,7 @@ def multi_way_union_mts(mts: list, tmp_dir: str, chunk_size: int) -> hl.MatrixTa
                         lambda i: hl.coalesce(
                             merged.__entries[i].__entries,
                             hl.range(hl.len(merged.__cols[i].__cols)).map(
-                                lambda j: hl.null(
+                                lambda j: hl.missing(
                                     merged.__entries.__entries.dtype.element_type.element_type
                                 )
                             ),
@@ -164,7 +169,7 @@ def join_mitochondria_vcfs_into_mt(
 
     mt_list = []
 
-    with open(input_tsv, "r") as f:
+    with hl.utils.hadoop_open(input_tsv, "r") as f:
 
         for line in f:
             line = line.rstrip()
@@ -245,7 +250,7 @@ def determine_hom_refs(
         FT=hl.if_else(hom_ref_expr, ["PASS"], mt.FT),
         DP=hl.if_else(
             hl.is_missing(mt.HL) & (mt.DP <= minimum_homref_coverage),
-            hl.null(hl.tint32),
+            hl.missing(hl.tint32),
             mt.DP,
         ),
     )
