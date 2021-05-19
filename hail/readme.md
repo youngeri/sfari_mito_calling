@@ -30,3 +30,15 @@
 
 - make plots
   - gs://epytest/EOCAD_testscripts/sample_QC/mt-202010/trial-data-qc.ipynb
+
+- add GT field to vcf for checking haplogroups with haplogrep
+  - script: add-GT.py
+  - output: combined_test_sequencing_controls_withGT.vcf.bgz
+
+- check haplogroups
+  - local copy of haplogrep v2.2.9: /home/erica/software/haplogrep/haplogrep
+    - downloaded from https://github.com/seppinho/haplogrep-cmd (see my readme in software folder)
+  - script: haplogroups/run-haplogrep.sh
+  - input: combined_test_sequencing_controls_withGT.vcf.bgz
+  - output: combined_test_sequencing_controls_haplogroups.txt
+
